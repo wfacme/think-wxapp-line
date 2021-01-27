@@ -1,0 +1,259 @@
+{extend name="layout:base"}
+{block name="body"}
+<style>
+    html,body{
+        background: #f7f7f7;
+    }
+    .wxapp-container{
+        max-width: 1000px;
+        margin: auto;
+        padding-top: 50px;
+    }
+    .wxapp-steps{
+        background: #ffffff;
+        padding: 20px;
+    }
+    .wxapp-body{
+        padding: 20px 0;
+    }
+    .wxapp-btns{
+        float: left;
+    }
+    .wxapp-right{
+        width: 90%;
+        float: right;
+    }
+    .qrcode-con{
+        width:400px;
+        text-align: center;
+        margin: auto;
+        background: #ffffff;
+        box-shadow: 1px 2px 2px 0px rgba(0,0,0,.2);
+    }
+    .qrcode-con .qrcode{
+        width: 100%;
+        position: relative;
+        min-height: 100px;
+    }
+    .qrcode-con .qrcode img{
+        width:100%;
+    }
+    .qrcode-con .desc{
+        padding: 10px;border-top:1px solid #f5f5f5;
+    }
+    .demo-spin-icon-load{
+        animation: ani-demo-spin 1s linear infinite;
+    }
+    @keyframes ani-demo-spin {
+        from { transform: rotate(0deg);}
+        50%  { transform: rotate(180deg);}
+        to   { transform: rotate(360deg);}
+    }
+    .demo-spin-col{
+        height: 100px;
+        position: relative;
+        border: 1px solid #eee;
+    }
+    .result{
+        padding: 20px;
+        background: #f5f5f5;
+    }
+    .step-body3{
+        background: #ffffff;
+        padding: 30px;
+        display: flex;
+    }
+    .step-body3 .left-icon{
+        margin-right: 10px;
+    }
+    .step-body3 .right-hander{
+        padding: 10px;
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+    .step-body3 .right-hander .message{
+        font-size: 18px;
+    }
+    .step-body3 .right-hander .btns{
+        position: absolute;
+        left: 10px;
+        bottom: 10px;
+    }
+    .modal-loading-step{
+        padding: 10px;
+        font-size: 14px;
+    }
+    .modal-loading-step span{
+        margin-left: 5px;
+    }
+</style>
+<div id="app">
+    <div class="wxapp-container">
+        <!--<div class="wxapp-btns">-->
+            <!--<button-group size="large" vertical>-->
+                <!--<i-button to="{:url('/')}" icon="md-home"></i-button>-->
+                <!--<i-button to="https://mp.weixin.qq.com/" target="_blank" type="info" icon="md-infinite"></i-button>-->
+                <!--<i-button to="{:config('acme.wxappSettingUrl')}" icon="md-settings"></i-button>-->
+            <!--</button-group>-->
+        <!--</div>-->
+        <div class="wxapp-right">
+            <div class="wxapp-steps">
+                <steps :current="currentIndex" :status="stepStatus">
+                    <step title="扫码登录" content="扫码登录自动跳转信息填写"></step>
+                    <step title="填写信息并上传" content="将会自动完成小程序上传（等待时间较长）"></step>
+                    <step title="上传成功" content="点击去微信公众平台提交小程序审核"></step>
+                </steps>
+            </div>
+            <div class="wxapp-body">
+                <div class="step-body1" v-if="currentIndex==0">
+                    <div class="qrcode-con">
+                        <div class="qrcode">
+                            <spin fix size="large" v-if="showQrcode"></spin>
+                            <img src="{$acme.qrcode}" alt="开发工具登录" v-else>
+                        </div>
+                        <div class="desc">
+                            <strong style="font-size: 14px;color:red;" v-if="showQrcode">请联系管理员打开微信开发者工具</strong>
+                            <strong v-else>小程序管理员或者开发者扫码登录</strong>
+                            <p style="color: #999;">期间会有短暂数据延迟,请耐心等待</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="step-body2" v-if="currentIndex==1">
+                    <i-form ref="formData" :model="formData" :rules="ruleValidate" :autocomplete="false" >
+                        <form-item label="小程序版本" prop="version">
+                            <i-input type="text" v-model="formData.version" placeholder="请填写小程序版本"></i-input>
+                        </form-item>
+                        <form-item label="新版本描述信息" prop="remark">
+                            <i-input type="textarea" v-model="formData.remark" placeholder="请填写小程序新版本的描述信息（选填）"></i-input>
+                        </form-item>
+                        <form-item>
+                            <i-button type="primary" :loading="formLoading"  @click="handleSubmit">打包上传</i-button>
+                            <i-button @click="handleReset" style="margin-left: 8px">重置</i-button>
+                        </form-item>
+                    </i-form>
+                </div>
+                <div class="step-body3" v-if="currentIndex==2">
+                    <div class="left-icon">
+                        <i-circle :percent="100" stroke-color="#2d8cf0">
+                            <icon type="ios-checkmark" size="120" style="color:#2d8cf0"></icon>
+                        </i-circle>
+                    </div>
+                    <div class="right-hander">
+                        <div class="message">小程序打包发布成功，请点击 <a href="https://mp.weixin.qq.com/">https://mp.weixin.qq.com/</a> 前去提交当前小程序审核。</div>
+                        <!--<div class="btns">-->
+                            <!--<i-button type="primary">去公众平台提交小程序审核</i-button>-->
+                        <!--</div>-->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <modal v-model="formLoading" :footer-hide="true" :mask-closable="false" title="小程序打包上传">
+        <div class="modal-loading-step" v-for="(item,index) in resultList" :key="index">
+            <icon :type="item.icon" :color="item.color||''" size="25" :class="item.class"></icon>
+            <span>{{item.message}}</span>
+        </div>
+    </modal>
+</div>
+
+
+{/block}
+{block name="footer"}
+<script>
+    var qrcodeData = "{$acme.qrcode}";
+
+    var app = new Vue({
+        el: '#app',
+        data: {
+            formData:{
+                remark:'',
+                version:'',
+            },
+            currentIndex:0,
+            formLoading:false,
+            stepStatus:'success',
+            ruleValidate:{
+                version:{
+                    required:true,
+                    message:"小程序更新版本为必填"
+                }
+            },
+            //是否显示二维码
+            showQrcode:!qrcodeData,
+            resultList:[
+                {
+                    icon:'ios-loading',
+                    class:'demo-spin-icon-load',
+                    message:'小程序打包上传过程等待时间较长，请耐心等候'
+                }
+            ]
+        },
+        created(){
+            const _this = this;
+            if(this.currentIndex==0){
+                if(!this.showQrcode){
+                    this.checkStatus();
+                }else{
+                    //请求获取登录二维码
+                }
+            }
+        },
+        methods:{
+            handleSubmit() {
+                const _this = this;
+                this.formLoading = true;
+                _this.stepStatus = 'success';
+                this.$refs['formData'].validate((valid) => {
+                    if (valid) {
+                        $.ajax({
+                            url:'{:url("/addons/wxapp/push/upload")}',
+                            type:'post',
+                            data:_this.formData,
+                            success(res){
+                                console.log("---",res)
+                                if(res.code==1){
+                                    _this.resultList[0].class = '';
+                                    _this.resultList[0].color = 'green';
+                                    _this.resultList[0].message = '小程序打包发布成功';
+                                    _this.resultList[0].icon = 'md-checkmark';
+                                    setTimeout(function () {
+                                        _this.formLoading = false;
+                                        _this.currentIndex += 1;
+                                    },1000);
+                                }else{
+                                    _this.$Message.error(res.msg);
+                                    _this.stepStatus = 'error';
+                                }
+                            }
+                        });
+                    } else {
+                        this.formLoading = false;
+                    }
+                })
+            },
+            handleReset() {
+                this.$refs['formData'].resetFields();
+            },
+            checkStatus(){
+                const _this = this;
+                let timer = setInterval(function () {
+                    $.ajax({
+                        url:'{:url("/addons/wxapp/push/status")}',
+                        success(res){
+                            console.log(res)
+                            if(res.code==1){
+                                clearInterval(timer);
+                                _this.currentIndex += 1;
+                            }
+                        },
+                        error(res){
+                            //重新刷新二维码
+                        }
+                    });
+                },3000)
+            }
+        }
+    })
+</script>
+{/block}
