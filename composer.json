@@ -1,0 +1,29 @@
+{
+    "name": "acmecms/think-wxapp-line",
+    "description": "thinkphp wxapp 小程序线传 扫码发布小程序 扫码自动发布",
+    "type": "library",
+    "require": {
+        "php-curl-class/php-curl-class": "^8.9",
+        "topthink/think-template": "^2.0",
+        "topthink/framework": "^6.0"
+    },
+    "license": "MIT",
+    "authors": [
+         {
+            "name": "acmephp",
+            "email": "672462206@qq.com"
+        }
+    ],
+	"autoload": {
+        "psr-4": {
+            "acme\\": "src"
+        }
+    },
+	"extra": {
+        "think": {
+            "services": [
+                "acme\\AcmeWxappService"
+            ]
+        }
+    }
+}
